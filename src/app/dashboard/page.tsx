@@ -33,7 +33,7 @@ export default function Dashboard() {
                 <FileText size={18} />
               </div>
               <span className="hidden sm:inline-block text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                PDF<span className="text-indigo-600 dark:text-indigo-400">Talk</span>
+                Naskah<span className="text-indigo-600 dark:text-indigo-400">AI</span>
               </span>
             </Link>
           </div>

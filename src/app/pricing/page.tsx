@@ -54,7 +54,7 @@ export default function PricingPage() {
               <FileText size={18} />
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              PDF<span className="text-indigo-600 dark:text-indigo-400">Talk</span>
+              Naskah<span className="text-indigo-600 dark:text-indigo-400">AI</span>
             </span>
           </Link>
           <nav className="flex items-center gap-4">
