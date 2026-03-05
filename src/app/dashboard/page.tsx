@@ -1,18 +1,57 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { FileText, Plus, Search, Settings, Upload } from "lucide-react";
+import { FileText, Plus, Search, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { PdfUploader } from "@/components/pdf/PdfUploader";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Document from "@/components/Document";
+
+interface DocumentData {
+  id: string;
+  name: string;
+  size: number;
+  url: string;
+  createdAt: string | null;
+}
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [documents, setDocuments] = useState<DocumentData[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
+  const fetchDocuments = useCallback(async () => {
+    try {
+      setIsLoadingDocs(true);
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents || []);
+      }
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+    } finally {
+      setIsLoadingDocs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      fetchDocuments();
+    }
+  }, [isLoaded, fetchDocuments]);
+
+  const filteredDocuments = documents.filter((doc) =>
+    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (!isLoaded) {
     return (
@@ -68,7 +107,7 @@ export default function Dashboard() {
                   <DialogHeader>
                     <DialogTitle>Upload a Document</DialogTitle>
                     <DialogDescription>
-                      Upload a PDF file to start chatting with it. We'll process it and make it ready for questions.
+                      Upload a PDF file to start chatting with it. We&apos;ll process it and make it ready for questions.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="mt-4">
@@ -87,31 +126,66 @@ export default function Dashboard() {
               <Input 
                 type="text" 
                 placeholder="Search documents..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
               />
             </div>
           </div>
 
-          {/* Empty State for Now */}
-          <div className="mt-8">
-            <Card className="border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent shadow-none">
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 mb-6">
-                  <Upload className="h-10 w-10 text-slate-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No documents yet</h3>
-                <p className="text-slate-500 dark:text-slate-400 max-w-sm mb-6">
-                  Upload your first PDF document to start chatting with it using our advanced AI.
-                </p>
-                <Button 
-                  onClick={() => setIsUploadOpen(true)}
-                  className="bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 shadow-sm dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white dark:border-slate-700"
-                >
-                  Select a PDF file
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Documents List */}
+          {isLoadingDocs ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            </div>
+          ) : filteredDocuments.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Placeholder Document - Add a document */}
+              <div
+                onClick={() => router.push("/dashboard/upload")}
+                className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-slate-500 transition-all hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/20 dark:hover:text-indigo-400 min-h-[76px]"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="font-medium">Add a Document</span>
+              </div>
+
+              {filteredDocuments.map((doc) => (
+                <Document
+                  key={doc.id}
+                  id={doc.id}
+                  name={doc.name}
+                  size={doc.size}
+                  downloadUrl={doc.url}
+                />
+              ))}
+            </div>
+          ) : documents.length > 0 && searchQuery ? (
+            <div className="mt-8 text-center py-16">
+              <p className="text-slate-500 dark:text-slate-400">
+                No documents matching &quot;{searchQuery}&quot;
+              </p>
+            </div>
+          ) : (
+            <div className="mt-8">
+              <Card className="border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent shadow-none">
+                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 mb-6">
+                    <Upload className="h-10 w-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No documents yet</h3>
+                  <p className="text-slate-500 dark:text-slate-400 max-w-sm mb-6">
+                    Upload your first PDF document to start chatting with it using our advanced AI.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/dashboard/upload")}
+                    className="bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 shadow-sm dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white dark:border-slate-700"
+                  >
+                    Select a PDF file
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </main>
     </div>

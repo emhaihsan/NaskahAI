@@ -4,26 +4,7 @@ import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { getPineconeStore } from "@/lib/langchain";
 import { v4 as uuidv4 } from "uuid";
-import { getStorage } from "firebase-admin/storage";
-import { getFirestore } from "firebase-admin/firestore";
-import * as admin from "firebase-admin";
-
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Replace escaped newlines in the private key
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      }),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    });
-  } catch (error) {
-    console.error("Firebase admin initialization error", error);
-  }
-}
+import { adminDb, adminStorage, admin } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,8 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Upload file to Firebase Storage
-    const storage = getStorage();
-    const bucket = storage.bucket();
+    const bucket = adminStorage.bucket();
     const fileId = uuidv4();
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const storageRef = bucket.file(`users/${userId}/documents/${fileId}.pdf`);
@@ -89,7 +69,6 @@ export async function POST(req: NextRequest) {
     await pineconeStore.addDocuments(chunkedDocsWithMetadata);
 
     // 3. Save metadata to Firestore
-    const db = getFirestore();
     const docData = {
       id: fileId,
       userId,
@@ -99,7 +78,7 @@ export async function POST(req: NextRequest) {
       size: file.size,
     };
 
-    await db.collection("users").doc(userId).collection("documents").doc(fileId).set(docData);
+    await adminDb.collection("users").doc(userId).collection("documents").doc(fileId).set(docData);
 
     return NextResponse.json({ 
       success: true, 

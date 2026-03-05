@@ -2,30 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getPineconeStore } from "@/lib/langchain";
 import OpenAI from "openai";
-import { getFirestore } from "firebase-admin/firestore";
-import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const maxDuration = 60;
 
 const openaiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      }),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    });
-  } catch (error) {
-    console.error("Firebase admin initialization error", error);
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,8 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify document belongs to user
-    const db = getFirestore();
-    const docRef = db.collection("users").doc(userId).collection("documents").doc(documentId);
+    const docRef = adminDb.collection("users").doc(userId).collection("documents").doc(documentId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
