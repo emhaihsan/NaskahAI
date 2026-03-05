@@ -9,8 +9,9 @@ import Markdown from "markdown-to-jsx";
 import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
+import { toast } from "sonner";
 
 interface ChatMessage {
   id: string;
@@ -28,6 +29,7 @@ export default function ChatPage() {
   const { id } = useParams();
   const documentId = id as string;
   const { user } = useUser();
+  const router = useRouter();
   const bottomOfChatRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -86,6 +88,17 @@ export default function ChatPage() {
             documentId,
           }),
         });
+
+        if (response.status === 403) {
+          const data = await response.json();
+          toast.error(data.message || "Batas pesan tercapai", {
+            action: {
+              label: "Upgrade",
+              onClick: () => router.push("/dashboard/upgrade"),
+            },
+          });
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(await response.text());

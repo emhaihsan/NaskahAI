@@ -5,15 +5,24 @@ import { useDropzone } from "react-dropzone";
 import { Upload, File, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useSubscription } from "@/hooks/useSubscription";
+import { toast } from "sonner";
 
 export function PdfUploader() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
+  const { isOverFileLimit, loading: subLoading } = useSubscription();
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
+
+    if (isOverFileLimit) {
+      toast.error("Batas dokumen gratis tercapai. Upgrade ke Pro untuk menambah dokumen.");
+      router.push("/dashboard/upgrade");
+      return;
+    }
     
     const file = acceptedFiles[0];
     

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { stripe } from "@/lib/stripe";
+import { getBaseUrl } from "@/lib/getBaseUrl";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,13 +18,14 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Price ID is required", { status: 400 });
     }
 
+    const baseUrl = getBaseUrl();
+
     const checkoutSession = await stripe.checkout.sessions.create({
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+      success_url: `${baseUrl}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/dashboard/upgrade`,
       payment_method_types: ["card"],
       mode: "subscription",
       billing_address_collection: "auto",
-      customer_email: session.userId ? undefined : undefined, // Replace with Clerk email if available
       line_items: [
         {
           price: priceId,

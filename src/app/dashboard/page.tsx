@@ -1,16 +1,15 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { FileText, Plus, Search, Upload, Loader2 } from "lucide-react";
+import { FileText, Plus, Search, Upload, Loader2, Frown, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { PdfUploader } from "@/components/pdf/PdfUploader";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Document from "@/components/Document";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface DocumentData {
   id: string;
@@ -22,11 +21,11 @@ interface DocumentData {
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const { hasActiveMembership, isOverFileLimit } = useSubscription();
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -96,25 +95,25 @@ export default function Dashboard() {
             </div>
             
             <div className="flex gap-3">
-              <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Upload PDF
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Upload a Document</DialogTitle>
-                    <DialogDescription>
-                      Upload a PDF file to start chatting with it. We&apos;ll process it and make it ready for questions.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="mt-4">
-                    <PdfUploader />
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Link href="/dashboard/upgrade">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Crown className="mr-2 h-4 w-4" />
+                  {hasActiveMembership ? "Kelola Langganan" : "Upgrade"}
+                </Button>
+              </Link>
+              <Button
+                onClick={() => {
+                  if (isOverFileLimit) {
+                    router.push("/dashboard/upgrade");
+                  } else {
+                    router.push("/dashboard/upload");
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Upload PDF
+              </Button>
             </div>
           </div>
 
@@ -140,13 +139,25 @@ export default function Dashboard() {
             </div>
           ) : filteredDocuments.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Placeholder Document - Add a document */}
+              {/* Placeholder Document - Add or Upgrade */}
               <div
-                onClick={() => router.push("/dashboard/upload")}
+                onClick={() =>
+                  isOverFileLimit
+                    ? router.push("/dashboard/upgrade")
+                    : router.push("/dashboard/upload")
+                }
                 className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-slate-500 transition-all hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/20 dark:hover:text-indigo-400 min-h-[76px]"
               >
-                <Plus className="h-5 w-5" />
-                <span className="font-medium">Add a Document</span>
+                {isOverFileLimit ? (
+                  <Frown className="h-5 w-5" />
+                ) : (
+                  <Plus className="h-5 w-5" />
+                )}
+                <span className="font-semibold">
+                  {isOverFileLimit
+                    ? "Upgrade untuk menambah dokumen"
+                    : "Tambah Dokumen"}
+                </span>
               </div>
 
               {filteredDocuments.map((doc) => (

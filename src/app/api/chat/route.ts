@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getPineconeStore } from "@/lib/langchain";
 import OpenAI from "openai";
 import { adminDb } from "@/lib/firebase-admin";
+import { FREE_LIMIT, PRO_LIMIT } from "@/lib/constants";
 
 export const maxDuration = 60;
 
@@ -34,6 +35,30 @@ export async function POST(req: NextRequest) {
     }
 
     const documentData = docSnap.data();
+
+    // Check user's subscription status and enforce message limits
+    const userRef = adminDb.collection("users").doc(userId);
+    const userSnap = await userRef.get();
+    const userData = userSnap.data();
+
+    const isPro = userData?.isPro === true;
+    const messageLimit = isPro
+      ? PRO_LIMIT.maxMessagesPerDocument
+      : FREE_LIMIT.maxMessagesPerDocument;
+
+    // Count user messages only
+    const userMessages = messages.filter((m: any) => m.role === "user");
+    if (userMessages.length > messageLimit) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: isPro
+            ? `Anda telah mencapai batas ${PRO_LIMIT.maxMessagesPerDocument} pesan untuk dokumen ini.`
+            : `Anda perlu upgrade ke Pro untuk mengirim lebih dari ${FREE_LIMIT.maxMessagesPerDocument} pesan.`,
+        },
+        { status: 403 }
+      );
+    }
 
     // Get the latest user message
     const lastMessage = messages[messages.length - 1];
